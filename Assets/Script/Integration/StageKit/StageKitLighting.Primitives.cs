@@ -26,18 +26,18 @@ namespace YARG.Integration.StageKit
         public override void Enable()
         {
             _patternIndex = 0;
-            //Brought to you by Hacky Hack and the Hacktones
+            // Brought to you by Hacky Hack and the Hacktones
             _gameManager = Object.FindObjectOfType<GameManager>();
             _gameManager.BeatEventHandler.Subscribe(OnBeat, _beatsPerCycle / _patternList.Length);
         }
 
-        public override void OnBeat()
+        private void OnBeat()
         {
             StageKitInterpreter.Instance.SetLed(_patternList[_patternIndex].color, _patternList[_patternIndex].data);
             _patternIndex++;
 
-            //some beat patterns are not continuous (single fire), so we need to kill them after
-            //they've run once otherwise they pile up.
+            // Some beat patterns are not continuous (single fire), so we need to kill them after they've run once
+            // otherwise they pile up.
             if (!_continuous && _patternIndex == _patternList.Length)
             {
                 _gameManager.BeatEventHandler.Unsubscribe(OnBeat);
@@ -114,7 +114,7 @@ namespace YARG.Integration.StageKit
                 return;
             }
 
-            if ((_listenType & ListenTypes.RedFretDrums) == 0 || eventName != (int) FourLaneDrumPad.RedDrum)
+            if ((_listenType & ListenTypes.RedFretDrums) == 0 || (eventName & (int)FourLaneDrumPad.RedDrum) == 0)
             {
                 return;
             }
@@ -139,10 +139,10 @@ namespace YARG.Integration.StageKit
 
         private void ProcessEvent()
         {
-            //This might be a bug in the official stage kit code. Instead of turning off the strobe as soon as cue
-            //changes, if the cue listens for something, it only turns off the strobe on the first event of it.
-            //To make that happen, strobe off would have to be here and removed from the master controller as well as
-            //added to the lighting event switch case for all the non-listening cues.
+            // This might be a bug in the official stage kit code. Instead of turning off the strobe as soon as cue
+            // changes, if the cue listens for something, it only turns off the strobe on the first event of it.
+            // To make that happen, strobe off would have to be here and removed from the master controller as well as
+            // added to the lighting event switch case for all the non-listening cues.
 
             if (_inverse)
             {
@@ -194,11 +194,11 @@ namespace YARG.Integration.StageKit
         private readonly float _seconds;
         private int _patternIndex;
         private readonly (StageKitLedColor color, byte data)[] _patternList;
-        private readonly CancellationTokenSource _cancellationTokenSource;
+        private CancellationTokenSource _cancellationTokenSource;
 
         public TimedPattern((StageKitLedColor, byte)[] patternList, float seconds)
         {
-            //Token only for timed events
+            // Token only for timed events
             _cancellationTokenSource = new CancellationTokenSource();
             _seconds = seconds;
             _patternList = patternList;
@@ -207,6 +207,7 @@ namespace YARG.Integration.StageKit
         public override void Enable()
         {
             _patternIndex = 0;
+            _cancellationTokenSource = new CancellationTokenSource();
             TimedCircleCoroutine(_cancellationTokenSource.Token).Forget();
         }
 

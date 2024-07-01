@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -29,12 +29,20 @@ namespace YARG.Settings
                 nameof(Settings.DisableGlobalBackgrounds),
                 nameof(Settings.DisablePerSongBackgrounds),
 
+                new HeaderMetadata("StatusBar"),
+                nameof(Settings.ShowBattery),
+                nameof(Settings.ShowTime),
+                nameof(Settings.MemoryStats),
+                nameof(Settings.FpsStats),
+
                 new HeaderMetadata("Other"),
+                nameof(Settings.ReconnectProfiles),
                 nameof(Settings.UseCymbalModelsInFiveLane),
                 nameof(Settings.KickBounceMultiplier),
                 nameof(Settings.ShowCursorTimer),
                 nameof(Settings.PauseOnDeviceDisconnect),
                 nameof(Settings.PauseOnFocusLoss),
+                nameof(Settings.WrapAroundNavigation),
                 nameof(Settings.AmIAwesome),
             },
             new SongManagerTab("SongManager", icon: "Songs")
@@ -63,6 +71,10 @@ namespace YARG.Settings
                 nameof(Settings.MusicPlayerVolume),
                 nameof(Settings.VocalMonitoring),
 
+                new HeaderMetadata("Customization"),
+                nameof(Settings.EnablePlaybackBuffer),
+                nameof(Settings.PlaybackBufferLength),
+
                 new HeaderMetadata("Input"),
                 nameof(Settings.MicrophoneSensitivity),
 
@@ -75,6 +87,7 @@ namespace YARG.Settings
                 nameof(Settings.ClapsInStarpower),
                 // nameof(Settings.ReverbInStarpower),
                 nameof(Settings.UseChipmunkSpeed),
+                nameof(Settings.ApplyVolumesInMusicLibrary),
             },
             new MetadataTab("Graphics", icon: "Display", new TrackPreviewBuilder())
             {
@@ -125,15 +138,34 @@ namespace YARG.Settings
                 new HeaderMetadata("LightingGeneral"),
                 nameof(Settings.StageKitEnabled),
                 nameof(Settings.DMXEnabled),
+                nameof(Settings.RB3EEnabled),
                 new HeaderMetadata("DMXChannels"),
+                new HeaderMetadata("StageKitDMXChannels"),
                 nameof(Settings.DMXDimmerChannels),
-                nameof(Settings.DMXCueChangeChannel),
                 nameof(Settings.DMXRedChannels),
                 nameof(Settings.DMXGreenChannels),
                 nameof(Settings.DMXBlueChannels),
                 nameof(Settings.DMXYellowChannels),
-                nameof(Settings.DMXFogChannel),
-                nameof(Settings.DMXStrobeChannel),
+                nameof(Settings.DMXFogChannels),
+                nameof(Settings.DMXStrobeChannels),
+                new HeaderMetadata("AdvancedDMXChannels"),
+                nameof(Settings.DMXCueChangeChannel),
+                nameof(Settings.DMXPostProcessingChannel),
+                nameof(Settings.DMXKeyframeChannel),
+                nameof(Settings.DMXBeatlineChannel),
+                nameof(Settings.DMXBonusEffectChannel),
+                nameof(Settings.DMXDrumsChannel),
+                nameof(Settings.DMXGuitarChannel),
+                nameof(Settings.DMXBassChannel),
+                nameof(Settings.DMXKeysChannel),
+                new HeaderMetadata("AdvancedDMXSettings"),
+                nameof(Settings.DMXUniverseChannel),
+                nameof(Settings.DMXDimmerValues),
+                //NYI
+                //nameof(Settings.DMXPerformerChannel)
+                new HeaderMetadata("RB3E"),
+                nameof(Settings.RB3EBroadcastIP),
+
             },
             new MetadataTab("Debug", icon: "Debug")
             {

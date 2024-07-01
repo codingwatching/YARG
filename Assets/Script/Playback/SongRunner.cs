@@ -270,7 +270,10 @@ namespace YARG.Playback
                 _disposed = true;
                 if (disposing)
                 {
-                    _syncThread?.Join();
+                    if (_syncThread.IsAlive)
+                    {
+                        _syncThread.Join();
+                    }
                     _syncThread = null;
                 }
             }
@@ -353,7 +356,7 @@ namespace YARG.Playback
 
                     if (_mixer.IsPaused)
                     {
-                        _mixer.Play(true);
+                        _mixer.Play(false);
                     }
 
                     RealAudioTime = _mixer.GetPosition();
@@ -615,11 +618,6 @@ namespace YARG.Playback
             if (inputCompensation)
             {
                 SetInputBaseChecked(PauseStartTime);
-            }
-
-            if (_playAudioOnResume)
-            {
-                _mixer.Play(false);
             }
 
             _pauseSync = false;

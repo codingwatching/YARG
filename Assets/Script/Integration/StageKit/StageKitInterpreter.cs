@@ -2,22 +2,19 @@ using System;
 using System.Collections.Generic;
 using PlasticBand.Haptics;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using YARG.Core.Chart;
 using YARG.Core.Logging;
-using YARG.Integration;
-using YARG.Integration.StageKit;
 
-namespace YARG
+namespace YARG.Integration.StageKit
 {
     public class StageKitInterpreter : MonoSingleton<StageKitInterpreter>
     {
         private readonly List<StageKitLighting> _cuePrimitives = new();
-        public StageKitLightingCue CurrentLightingCue;
+        private StageKitLightingCue _currentLightingCue;
         public static StageKitLightingCue PreviousLightingCue;
         private const byte NONE = 0b00000000;
 
-        private Dictionary<LightingType, StageKitLightingCue> _cueDictionary = new()
+        private readonly Dictionary<LightingType, StageKitLightingCue> _cueDictionary = new()
         {
             { LightingType.Menu, new MenuLighting() },
             { LightingType.Score, new ScoreLighting() },
@@ -44,29 +41,48 @@ namespace YARG
         };
 
         public static event Action<StageKitLedColor, byte> OnLedEvent;
+        public static event Action<StageKitStrobeSpeed> OnStrobeSetEvent;
 
-        // this class maintains the Stage Kit lighting cues and primitives
+        public static event Action<MasterLightingController.FogState> OnFogMachineEvent;
+
+        // This class maintains the Stage Kit lighting cues and primitives
         public void Start()
         {
-            SceneManager.sceneUnloaded += OnSceneUnloaded;
-
-            MasterLightingController.OnDrumEvent += OnDrumEvent;
+            MasterLightingController.OnInstrumentEvent += OnDrumEvent;
             MasterLightingController.OnVocalsEvent += OnVocalsEvent;
             MasterLightingController.OnLightingEvent += OnLightingEvent;
             MasterLightingController.OnBeatLineEvent += OnBeatLineEvent;
+            MasterLightingController.OnFogState += OnFogStateEvent;
+            MasterLightingController.OnStrobeEvent += OnStrobeEvent;
         }
 
-        private void OnSceneUnloaded(Scene scene)
+        private void OnApplicationQuit()
         {
-            AllLedsOff();
-            KillCue();
+            MasterLightingController.OnInstrumentEvent -= OnDrumEvent;
+            MasterLightingController.OnVocalsEvent -= OnVocalsEvent;
+            MasterLightingController.OnLightingEvent -= OnLightingEvent;
+            MasterLightingController.OnBeatLineEvent -= OnBeatLineEvent;
+            MasterLightingController.OnFogState -= OnFogStateEvent;
+            MasterLightingController.OnStrobeEvent -= OnStrobeEvent;
         }
 
         private void ChangeCues(StageKitLightingCue cue)
         {
-            KillCue();
-            CurrentLightingCue = cue;
-            CurrentLightingCue?.Enable();
+            if (_currentLightingCue != null)
+            {
+                foreach (var primitive in _currentLightingCue.CuePrimitives)
+                {
+                    primitive.KillSelf();
+                }
+
+                _cuePrimitives.Clear();
+                PreviousLightingCue = _currentLightingCue;
+                _currentLightingCue.DirectListenEnabled = false;
+                _currentLightingCue = null;
+            }
+
+            _currentLightingCue = cue;
+            _currentLightingCue?.Enable();
         }
 
         public void SetLed(StageKitLedColor color, byte led)
@@ -74,42 +90,29 @@ namespace YARG
             OnLedEvent?.Invoke(color, led);
         }
 
-        private void AllLedsOff()
+        private void OnFogStateEvent(MasterLightingController.FogState value)
         {
-            SetLed(StageKitLedColor.Red, NONE);
-            SetLed(StageKitLedColor.Green, NONE);
-            SetLed(StageKitLedColor.Blue, NONE);
-            SetLed(StageKitLedColor.Yellow, NONE);
+            OnFogMachineEvent?.Invoke(value);
         }
 
-        private void KillCue()
+        private void OnStrobeEvent(StageKitStrobeSpeed value)
         {
-            if (CurrentLightingCue == null) return;
-
-            foreach (var primitive in CurrentLightingCue.CuePrimitives)
-            {
-                primitive.KillSelf();
-            }
-
-            _cuePrimitives.Clear();
-            PreviousLightingCue = CurrentLightingCue;
-            CurrentLightingCue.DirectListenEnabled = false;
-            CurrentLightingCue = null;
+            OnStrobeSetEvent?.Invoke(value);
         }
 
         protected virtual void OnBeatLineEvent(Beatline value)
         {
-            if (CurrentLightingCue == null)
+            if (_currentLightingCue == null)
             {
                 return;
             }
 
-            if (CurrentLightingCue.DirectListenEnabled)
+            if (_currentLightingCue.DirectListenEnabled)
             {
-                CurrentLightingCue.HandleBeatlineEvent(value.Type);
+                _currentLightingCue.HandleBeatlineEvent(value.Type);
             }
 
-            foreach (var primitive in CurrentLightingCue.CuePrimitives)
+            foreach (var primitive in _currentLightingCue.CuePrimitives)
             {
                 primitive.HandleBeatlineEvent(value.Type);
             }
@@ -117,15 +120,14 @@ namespace YARG
 
         protected virtual void OnLightingEvent(LightingEvent value)
         {
-            
-            if (value != null && value.Type == LightingType.Keyframe_Next && CurrentLightingCue != null)
+            if (value != null && value.Type == LightingType.Keyframe_Next && _currentLightingCue != null)
             {
-                if (CurrentLightingCue.DirectListenEnabled)
+                if (_currentLightingCue.DirectListenEnabled)
                 {
-                    CurrentLightingCue.HandleLightingEvent(value.Type);
+                    _currentLightingCue.HandleLightingEvent(value.Type);
                 }
 
-                foreach (var primitive in CurrentLightingCue.CuePrimitives)
+                foreach (var primitive in _currentLightingCue.CuePrimitives)
                 {
                     primitive.HandleLightingEvent(value.Type);
                 }
@@ -134,6 +136,10 @@ namespace YARG
             {
                 if (value == null)
                 {
+                    SetLed(StageKitLedColor.Red, NONE);
+                    SetLed(StageKitLedColor.Green, NONE);
+                    SetLed(StageKitLedColor.Blue, NONE);
+                    SetLed(StageKitLedColor.Yellow, NONE);
                     ChangeCues(null);
                 }
                 else if (value.Type is LightingType.Keyframe_Next or LightingType.Keyframe_Previous
@@ -155,37 +161,37 @@ namespace YARG
             }
         }
 
-        protected virtual void OnDrumEvent(DrumNote value)
+        protected virtual void OnDrumEvent(MasterLightingController.InstrumentType instrument, int value)
         {
-            if (CurrentLightingCue == null)
+            if (_currentLightingCue == null || instrument != MasterLightingController.InstrumentType.Drums)
             {
                 return;
             }
 
-            if (CurrentLightingCue.DirectListenEnabled)
+            if (_currentLightingCue.DirectListenEnabled)
             {
-                CurrentLightingCue.HandleDrumEvent(value.Pad);
+                _currentLightingCue.HandleDrumEvent(value);
             }
 
-            foreach (var primitive in CurrentLightingCue.CuePrimitives)
+            foreach (var primitive in _currentLightingCue.CuePrimitives)
             {
-                primitive.HandleDrumEvent(value.Pad);
+                primitive.HandleDrumEvent(value);
             }
         }
 
         protected virtual void OnVocalsEvent(VocalNote value)
         {
-            if (CurrentLightingCue == null)
+            if (_currentLightingCue == null)
             {
                 return;
             }
 
-            if (CurrentLightingCue.DirectListenEnabled)
+            if (_currentLightingCue.DirectListenEnabled)
             {
-                CurrentLightingCue.HandleVocalEvent(0);
+                _currentLightingCue.HandleVocalEvent(0);
             }
 
-            foreach (var primitive in CurrentLightingCue.CuePrimitives)
+            foreach (var primitive in _currentLightingCue.CuePrimitives)
             {
                 primitive.HandleVocalEvent(0);
             }

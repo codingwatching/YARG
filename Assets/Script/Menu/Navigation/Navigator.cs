@@ -59,7 +59,7 @@ namespace YARG.Menu.Navigation
             MenuAction.Right,
         };
 
-        private class HoldContext
+        public class HoldContext
         {
             public readonly NavigationContext Context;
             public float Timer = INPUT_REPEAT_COOLDOWN;
@@ -106,6 +106,20 @@ namespace YARG.Menu.Navigation
         private void ProcessInput(YargPlayer player, ref GameInput input)
         {
             var action = (MenuAction) input.Action;
+
+            // Swap up and down for lefty flip
+            if (player.Profile.LeftyFlip)
+            {
+                action = action switch
+                {
+                    MenuAction.Up    => MenuAction.Down,
+                    MenuAction.Down  => MenuAction.Up,
+                    MenuAction.Left  => MenuAction.Right,
+                    MenuAction.Right => MenuAction.Left,
+                    _                => action
+                };
+            }
+
             var context = new NavigationContext(action, player);
 
             if (input.Button)
@@ -137,6 +151,7 @@ namespace YARG.Menu.Navigation
         private void EndNavigationHold(NavigationContext context)
         {
             _heldInputs.RemoveAll(i => i.Context.IsSameAs(context));
+            InvokeHoldOffEvent(context);
         }
 
         public bool IsHeld(MenuAction action)
@@ -156,6 +171,19 @@ namespace YARG.Menu.Navigation
             if (_schemeStack.Count > 0)
             {
                 _schemeStack.Peek().InvokeFuncs(ctx);
+            }
+        }
+
+        private void InvokeHoldOffEvent(NavigationContext ctx)
+        {
+            if (DisableMenuInputs)
+            {
+                return;
+            }
+
+            if (_schemeStack.Count > 0)
+            {
+                _schemeStack.Peek().InvokeHoldOffFuncs(ctx);
             }
         }
 
